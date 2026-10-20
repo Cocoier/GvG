@@ -1,0 +1,180 @@
+<!doctype html><html lang="fr"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>GvG</title>
+<style>
+/* ====== COULEURS & STYLE : modifiables ici ====== */
+:root{--bg:#14161c;--c:#252a36;--t:#e7e9ee;--m:#8b90a0;--a:#9a9aff;--g:#2a2f3b;--ok:#22c55e;--ko:#ef4444}
+[data-theme=light]{--bg:#f4f5f8;--c:#e3e6ee;--t:#1b1e27;--m:#5d6475;--a:#4545d6;--g:#d3d8e3}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--t);font:14px system-ui,sans-serif}
+#app{max-width:1250px;margin:0 auto;padding:20px}a{color:var(--a);text-decoration:none}h1{font-size:30px;margin:6px 0 18px}h2{margin:30px 0 12px}
+.chips{display:flex;gap:10px;flex-wrap:wrap;margin:10px 0}.chip{background:var(--c);padding:9px 16px;border-radius:20px;color:var(--t);display:inline-flex;gap:8px;align-items:center;border:0;font:inherit;cursor:pointer}
+.chip.on{outline:1px solid var(--a);color:var(--a)}.chip i{width:11px;height:11px;border-radius:50%;background:var(--m)}.V i{background:var(--ok)}.D i{background:var(--ko)}
+.badge{border:1px solid var(--ok);color:var(--ok);border-radius:20px;padding:4px 14px}.badge.D{border-color:var(--ko);color:var(--ko)}
+.sub{color:var(--m);margin:4px 0}.scroll{overflow-x:auto}table{border-collapse:collapse;width:100%}
+th{background:var(--c);text-align:right;padding:6px 10px;white-space:nowrap}td{padding:5px 10px;text-align:right;border:1px solid var(--bg);white-space:nowrap}
+th:first-child,td:first-child{text-align:left}td.n{color:#0b1020}.dim{color:var(--m)}
+svg text{fill:var(--m);font-size:10px}.pl .chip{padding:3px 10px;font-size:12px}#th{position:fixed;top:12px;right:14px;z-index:5}
+</style></head><body><button id="th" class="chip">☀/☾</button><div id="app"></div>
+<script src="data/bundle.js"></script>
+<script>
+/* ====== TEXTES & COULEURS DES GRAPHIQUES : modifiables ici ====== */
+const CFG={nous:'#9e0e40',adv:'#d79a10',barre:'#22c55e',
+ t:{home:'Classement général',moy:'Moyenne',sc:'Scores',fi:'Fiabilité',det:'Détails',chr:'Chronologie',km:'Jetons théoriquement réussis',adv:'Adversaires',nous:'Notre guilde',de:'Défense'}};
+const D=window.GDG,$=document.getElementById('app');
+const N=id=>D.noms[id]||id,avg=a=>a.length?a.reduce((x,y)=>x+y,0)/a.length:null,r_=Math.round;
+const esc=s=>String(s??'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const seasons=[...new Set(D.wars.map(w=>w.saison))].sort((a,b)=>a-b);
+const warsOf=s=>D.wars.filter(w=>w.saison==s).sort((a,b)=>a.war-b.war);
+const W=id=>D.wars.find(w=>w.war_id==id);
+const P={};D.players.forEach(p=>(P[p.war_id]??={})[p.user_id]=p);
+const hm=t=>'+'+Math.floor(t)+'h'+String(r_(t%1*60)).padStart(2,'0');
+const cls=w=>/^v/i.test(w.resultat||'')?'V':/^d/i.test(w.resultat||'')?'D':'';
+const VIR=[[68,1,84],[59,82,139],[33,145,140],[94,201,98],[253,231,37]]; // dégradé viridis (bas -> haut)
+const bg=(v,lo,hi)=>{if(v==null)return'';const t=hi>lo?(v-lo)/(hi-lo):1,p=t*4,i=Math.min(3,Math.floor(p)),f=p-i,c=VIR[i].map((x,k)=>r_(x+(VIR[i+1][k]-x)*f));return`style="background:rgb(${c});color:${t<.55?'#fff':'#0b1020'}"`};
+// thème clair / sombre
+const setT=t=>{document.documentElement.dataset.theme=t;try{localStorage.setItem('th',t)}catch(e){}};
+let th;try{th=localStorage.getItem('th')}catch(e){}
+setT(th||(matchMedia('(prefers-color-scheme: light)').matches?'light':'dark'));
+document.getElementById('th').onclick=()=>setT(document.documentElement.dataset.theme=='light'?'dark':'light');
+
+function heat(rows,cols){
+ const M=rows.map(r=>cols.map(c=>c.get(r.id))),av=M.map(m=>avg(m.filter(v=>v!=null)));
+ const all=M.flat().concat(av).filter(v=>v!=null),lo=Math.min(...all),hi=Math.max(...all);
+ return`<div class="scroll"><table><tr><th>Joueur</th>${cols.map(c=>`<th>${c.href?`<a href="${c.href}">${esc(c.label)}</a>`:esc(c.label)}</th>`).join('')}<th>${CFG.t.moy}</th></tr>`+
+ rows.map((r,i)=>`<tr><td>${esc(r.label)}</td>${M[i].map(v=>`<td class="n" ${bg(v,lo,hi)}>${v==null?'<span class=dim>-</span>':r_(v)}</td>`).join('')}<td class="n" ${bg(av[i],lo,hi)}>${av[i]==null?'-':r_(av[i])}</td></tr>`).join('')+'</table></div>';
+}
+function bars(items,mx=Math.max(...items.map(i=>i.v),1),fmt=r_){
+ const w=items.length*28+50;
+ return`<div class="scroll"><svg width="${w}" height="270" viewBox="0 0 ${w} 270">`+items.map((it,i)=>{const h=it.v/mx*180,x=20+i*28;
+ return`<rect x="${x}" y="${210-h}" width="20" height="${h}" rx="2" fill="${CFG.barre}"/><text x="${x+10}" y="${205-h}" text-anchor="middle">${fmt(it.v)}</text><text transform="translate(${x+12},218) rotate(55)">${esc(it.label)}</text>`}).join('')+'</svg></div>';
+}
+const quant=(a,q)=>{const s=[...a].sort((x,y)=>x-y),p=(s.length-1)*q,i=Math.floor(p);return s[i]+(s[Math.min(i+1,s.length-1)]-s[i])*(p-i)};
+// joueurs actuels = participants de la dernière guerre
+const lastW=[...D.wars].sort((a,b)=>a.saison-b.saison||a.war-b.war).at(-1);
+const ACTIFS=new Set(Object.values(P[lastW.war_id]||{}).filter(p=>p.participe).map(p=>p.user_id));
+let ONLY=false;try{ONLY=localStorage.getItem('only')=='1'}catch(e){}
+const keep=id=>!ONLY||ACTIFS.has(id);
+const onlyBtn=()=>`<div class="chips"><button class="chip${ONLY?' on':''}" id="onlyb">Joueurs actuels uniquement</button><span class="sub">(participants de la dernière guerre, ${lastW.war_id})</span></div>`;
+const bindOnly=()=>{document.getElementById('onlyb').onclick=()=>{ONLY=!ONLY;try{localStorage.setItem('only',ONLY?'1':'0')}catch(e){};render()}};
+const battles=ids=>ids.flatMap(id=>D.details[id].batailles.filter(b=>b.equipe=='nous'&&keep(b.user_id)));
+function boxes(B){ // médiane et quartiles des scores individuels par bataille
+ const by={};B.forEach(b=>(by[b.user_id]??=[]).push(b.score_jeu??0));
+ const it=Object.entries(by).map(([id,a])=>({l:N(id),q:[0,.25,.5,.75,1].map(q=>quant(a,q))})).sort((a,b)=>b.q[2]-a.q[2]||b.q[1]-a.q[1]);
+ const w=it.length*28+60,Y=v=>230-v/1600*200;
+ let g=`<div class="scroll"><svg width="${w}" height="330" viewBox="0 0 ${w} 330">`;
+ for(let v=0;v<=1600;v+=400)g+=`<line x1="40" x2="${w}" y1="${Y(v)}" y2="${Y(v)}" stroke="var(--g)"/><text x="34" y="${Y(v)+3}" text-anchor="end">${v}</text>`;
+ it.forEach((o,i)=>{const x=50+i*28,[a,b,c,d,e]=o.q.map(Y);
+  g+=`<line x1="${x+10}" x2="${x+10}" y1="${a}" y2="${e}" stroke="var(--m)"/><rect x="${x}" y="${d}" width="20" height="${Math.max(b-d,1)}" rx="3" fill="${CFG.barre}" fill-opacity=".25" stroke="${CFG.barre}"/><line x1="${x}" x2="${x+20}" y1="${c}" y2="${c}" stroke="${CFG.barre}" stroke-width="3"/><text transform="translate(${x+12},242) rotate(55)">${esc(o.l)}</text>`});
+ return g+'</svg></div><div class="sub">Médiane et quartiles (25 %–75 %) des scores individuels par bataille ; moustaches = min / max.</div>';
+}
+function fiab(B){ // % de victoires (oneshot, cleanup ou IA) par jeton
+ const by={};B.forEach(b=>{const o=by[b.user_id]??={n:0,s:0};o.n++;o.s+=b.succes?1:0});
+ return bars(Object.entries(by).map(([id,o])=>({label:N(id),v:100*o.s/o.n})).sort((a,b)=>b.v-a.v),100,v=>r_(v)+'%')+'<div class="sub">Probabilité de victoire par jeton utilisé (oneshot, cleanup ou combat contre IA).</div>';
+}
+function setTabs(defs){const tb=document.getElementById('tb'),tc=document.getElementById('tc');
+ const show=i=>{[...tb.children].forEach((b,j)=>b.classList.toggle('on',i==j));tc.innerHTML=defs[i].f()};
+ tb.innerHTML=defs.map((d,i)=>`<button class="chip" data-i="${i}">${d.l}</button>`).join('');tb.onclick=e=>e.target.dataset.i&&show(+e.target.dataset.i);show(0)}
+const tabsHtml='<div class="chips" id="tb"></div><div id="tc"></div>';
+
+function home(){
+ const V={};D.players.filter(p=>p.participe&&keep(p.user_id)).forEach(p=>((V[p.user_id]??={})[p.saison]??=[]).push(p.tot));
+ const sv=(id,s)=>V[id]?.[s]?avg(V[id][s]):null;
+ const rows=Object.keys(V).map(id=>({id,label:N(id),o:avg(seasons.map(s=>sv(id,s)).filter(v=>v!=null))})).sort((a,b)=>b.o-a.o);
+ $.innerHTML=`<h1>${CFG.t.home}</h1><div class="chips">${seasons.map(s=>`<a class="chip" href="#/s/${s}">Saison ${s}</a>`).join('')}</div>${onlyBtn()}${methode()}<h2>Scores</h2>${tabsHtml}<h2>${CFG.t.det}</h2>`+
+ heat(rows,seasons.map(s=>({label:'Saison '+s,href:'#/s/'+s,get:id=>sv(id,s)})));
+ bindOnly();const WI=D.wars.map(w=>w.war_id),B=battles(WI);
+ setTabs([{l:CFG.t.moy,f:()=>bars(rows.map(r=>({label:r.label,v:r.o})))},{l:CFG.t.sc,f:()=>boxes(B)},{l:CFG.t.fi,f:()=>fiab(B)},{l:CFG.t.de,f:()=>defense(WI,true)}]);
+}
+function season(s){
+ const ws=warsOf(s),get=w=>id=>{const p=P[w.war_id]?.[id];return p&&p.participe?p.tot:null};
+ const ids=[...new Set(ws.flatMap(w=>Object.values(P[w.war_id]||{}).filter(p=>p.participe&&keep(p.user_id)).map(p=>p.user_id)))];
+ const rows=ids.map(id=>({id,label:N(id),o:avg(ws.map(w=>get(w)(id)).filter(v=>v!=null))})).sort((a,b)=>b.o-a.o);
+ $.innerHTML=`<a href="#/">← ${CFG.t.home}</a><h1>Saison ${s}</h1><div class="chips">${ws.map(w=>`<a class="chip ${cls(w)}" href="#/w/${w.war_id}"><i></i>${w.war} · ${esc(w.guilde_adverse)}</a>`).join('')}</div>${onlyBtn()}<h2>Scores</h2>${tabsHtml}<h2>${CFG.t.det}</h2>`+
+ heat(rows,ws.map(w=>({label:w.guilde_adverse,href:'#/w/'+w.war_id,get:get(w)})));
+ bindOnly();const WI=ws.map(w=>w.war_id),B=battles(WI);
+ setTabs([{l:CFG.t.moy,f:()=>bars(rows.map(r=>({label:r.label,v:r.o})))},{l:CFG.t.sc,f:()=>boxes(B)},{l:CFG.t.fi,f:()=>fiab(B)},{l:CFG.t.de,f:()=>defense(WI,true)}]);
+}
+const COLS=[['rang','Rang'],['tot','Tot'],['atk','Atk'],['map','Map'],['buff','Buff'],['med2','2med'],['med1','1med'],['unu','Unu'],['suc','Suc'],['os0','16'],['os1','14'],['os2','12'],['os34','11'],['cln','Cln'],['ia','IA'],['fail','Failed']];
+function tbl(ps){const v=ps.map(p=>p.tot),mx=Math.max(...v),mn=Math.min(...v);
+ return`<div class="scroll"><table><tr><th>Joueur</th>${COLS.map(c=>`<th>${c[1]}</th>`).join('')}</tr>${ps.map(p=>`<tr><td>${esc(p.joueur)}</td>${COLS.map(([k])=>k=='tot'?`<td class="n" ${bg(p.tot,mn,mx)}>${p.tot}</td>`:`<td>${p[k]}</td>`).join('')}</tr>`).join('')}</table></div>`}
+function chrono(b,ev){
+ const T=Math.max(...b.map(x=>x.t_h),1),w=1100,X=t=>40+t/T*(w-60),col={nous:CFG.nous,adverse:CFG.adv};
+ const cum={nous:[[0,0]],adverse:[[0,0]]},tot={nous:0,adverse:0};
+ b.forEach(x=>{tot[x.equipe]+=x.score_jeu||0;cum[x.equipe].push([x.t_h,tot[x.equipe]])});
+ const mx=Math.max(tot.nous,tot.adverse,1),Y=v=>170-v/mx*150;
+ const line=(a,c)=>`<polyline fill="none" stroke="${c}" stroke-width="2" points="${a.concat([[T,a.at(-1)[1]]]).map(([t,v])=>X(t)+','+Y(v)).join(' ')}"/>`;
+ let g=`<svg width="${w}" height="240" viewBox="0 0 ${w} 240">`;
+ const raw=mx/5,pw=10**Math.floor(Math.log10(raw)),st=[1,2,5,10].map(m=>m*pw).find(q=>q>=raw);
+ for(let v=0;v<=mx;v+=st)g+=`<line x1="40" x2="${w-20}" y1="${Y(v)}" y2="${Y(v)}" stroke="var(--g)"/><text x="34" y="${Y(v)+3}" text-anchor="end">${r_(v/1000)}k</text>`;
+ for(let t=0;t<=T;t+=6)g+=`<line x1="${X(t)}" x2="${X(t)}" y1="10" y2="175" stroke="var(--g)"/><text x="${X(t)}" y="190" text-anchor="middle">+${t}h</text>`;
+ g+=line(cum.nous,col.nous)+line(cum.adverse,col.adverse);
+ b.filter(x=>x.categorie=='echec').forEach(x=>{const y=x.equipe=='nous'?198:212;g+=`<line x1="${X(x.t_h)}" x2="${X(x.t_h)}" y1="${y}" y2="${y+11}" stroke="${col[x.equipe]}"/>`});
+ const zd=ev.filter(e=>e.type=='zoneDestroyed'&&e.t_h>=0);
+ zd.forEach(e=>g+=`<circle cx="${X(e.t_h)}" cy="${Y((cum[e.equipe].filter(p=>p[0]<=e.t_h).at(-1)||[0,0])[1])}" r="3" fill="${col[e.equipe]}" stroke="var(--t)"/>`);
+ ['nous','adverse'].forEach((t,i)=>{const z=zd.filter(e=>e.equipe==t).sort((a,b)=>a.t_h-b.t_h)[14];if(z)
+  g+=`<line x1="${X(z.t_h)}" x2="${X(z.t_h)}" y1="10" y2="175" stroke="${col[t]}" stroke-dasharray="5 4"/><text x="${X(z.t_h)-4}" y="${20+i*12}" text-anchor="end" style="fill:${col[t]}">champ de bataille exterminé ${hm(z.t_h)}</text>`});
+ return g+`</svg><div class="sub">Score cumulé par équipe · points = zones détruites · pointillés = 15ᵉ bâtiment détruit · traits = jetons perdus.</div>`;
+}
+function km(b,nN,nA,tk){ // jetons théoriquement réussis (type Kaplan-Meier)
+ const w=1100,h=280,xm=Math.max(nN,nA)*tk,seq={};
+ [['nous',nN,CFG.nous],['adverse',nA,CFG.adv]].forEach(([t,n,c])=>{const T=n*tk;let f=0,k=0;const pts=[[0,100]];
+  b.filter(x=>x.equipe==t).forEach(x=>{k++;if(x.categorie=='echec'){f++;pts.push([k-1,pts.at(-1)[1]]);pts.push([k,100*(T-f)/T])}});pts.push([k,pts.at(-1)[1]]);seq[t]={pts,c,T}});
+ const lo=Math.floor(Math.min(...Object.values(seq).map(s=>s.pts.at(-1)[1]))/10)*10,X=v=>40+v/xm*(w-60),Y=v=>20+(100-v)/(100-lo)*220;
+ let g=`<svg width="${w}" height="${h}" viewBox="0 0 ${w} ${h}">`;
+ for(let v=lo;v<=100;v+=10)g+=`<line x1="40" x2="${w-20}" y1="${Y(v)}" y2="${Y(v)}" stroke="var(--g)"/><text x="34" y="${Y(v)+3}" text-anchor="end">${v}%</text>`;
+ for(let v=0;v<=xm;v+=50)g+=`<text x="${X(v)}" y="258" text-anchor="middle">${v}</text>`;
+ Object.entries(seq).forEach(([t,s])=>g+=`<polyline fill="none" stroke="${s.c}" stroke-width="2" points="${s.pts.map(p=>X(p[0])+','+Y(p[1])).join(' ')}"/>`);
+ return g+`<text x="${w/2}" y="274" text-anchor="middle">Jetons utilisés (départ : ${nN*tk} nous / ${nA*tk} adversaire)</text></svg>`;
+}
+function methode(){const tk=D.wars[0]?.n_tokens||10;
+ return`<h2>Méthode de comptage des points</h2><div style="line-height:1.6"><p class="sub" style="color:var(--t)">Chaque jeton d'attaque (${tk} par guerre) rapporte des points selon son issue :</p><ul>
+ <li><b>Oneshot contre un joueur</b> : 7 pts sans perte, 6 pts (1 perte), 5 pts (2 pertes), 4 pts (3 à 4 pertes) → colonnes 16 / 14 / 12 / 11.</li>
+ <li><b>Cleanup</b> (achève une zone déjà entamée) : 4 pts · <b>combat contre l'IA</b> : 4 pts · <b>échec</b> : 0 pt. Ni cleanup ni IA ne reçoivent de bonification.</li>
+ <li><b>Bonifications</b> (oneshot contre un joueur uniquement) : <i>Map</i> +2 ou +1 selon la zone (listées sur chaque guerre) ; <i>med</i> +1 si un buff est actif sur la zone, +2 s'il y en a deux ou plus ; <i>Buff</i> +1 si au moins deux buffs de portée régionale ou locale sont actifs.</li>
+ <li><b>Unu</b> : −1 par jeton non utilisé (pour les joueurs ayant participé).</li></ul>
+ <p>Total = Atk + Map + Buff + 2med + 1med + Unu. Le score d'une saison est la moyenne des guerres jouées. <b>Maximum théorique : ${tk} × (7 + 2 + 2 + 1) = ${tk*12} points par guerre</b> (oneshot parfait sur une zone à +2 Map, avec deux buffs régionaux/locaux actifs).</p></div>`}
+let _d=0;
+function defense(wids,filtre=false){ // efficacité de la défense : bonus subis vs score encaissé / probabilité d'échec
+ const k='df'+(++_d),by={};
+ wids.forEach(wid=>D.details[wid].batailles.filter(b=>b.equipe=='adverse'&&!b.vs_ia&&b.defenseur_id&&(!filtre||keep(b.defenseur_id))).forEach(b=>{
+  const o=by[b.defenseur_id]??={n:0,s:0,f:0,b:0};o.n++;o.s+=b.score_jeu??0;o.f+=b.succes?0:1;o.b+=b.bonus_pot||0}));
+ const R=Object.entries(by).map(([id,o])=>({l:N(id),n:o.n,sc:o.s/o.n,pf:100*o.f/o.n,bo:o.b/o.n}));
+ const Q=[{key:'sc',t:'Score moyen encaissé par jeton',max:1600,fmt:v=>r_(v),topEff:'peu efficace'},{key:'pf',t:"Probabilité d'échec d'une attaque",max:100,fmt:v=>r_(v)+'%',topEff:'très efficace'}];
+ let sel=null,cur=Q[0];
+ const draw=m=>{const w=900,h=440,L=50,Bt=60,xm=Math.max(...R.map(r=>r.bo),.5)*1.1,X=v=>L+v/xm*(w-L-20),Y=v=>20+(1-v/m.max)*(h-20-Bt);
+  const mx=quant(R.map(r=>r.bo),.5),my=quant(R.map(r=>r[m.key]),.5),top=m.topEff,bot=top=='peu efficace'?'très efficace':'peu efficace';
+  let g=`<svg width="${w}" height="${h}" viewBox="0 0 ${w} ${h}">`;
+  for(let i=0;i<=4;i++){const v=m.max*i/4;g+=`<line x1="${L}" x2="${w-20}" y1="${Y(v)}" y2="${Y(v)}" stroke="var(--g)"/><text x="${L-6}" y="${Y(v)+3}" text-anchor="end">${m.fmt(v)}</text>`}
+  for(let i=0;i<=5;i++){const v=xm*i/5;g+=`<text x="${X(v)}" y="${h-Bt+14}" text-anchor="middle">${v.toFixed(1)}</text>`}
+  g+=`<text x="${(L+w)/2}" y="${h-Bt+34}" text-anchor="middle">Bonus moyen par attaque subie (map + med + buffs régionaux/locaux)</text>
+  <line x1="${X(mx)}" x2="${X(mx)}" y1="20" y2="${h-Bt}" stroke="var(--m)" stroke-dasharray="6 5"/><line x1="${L}" x2="${w-20}" y1="${Y(my)}" y2="${Y(my)}" stroke="var(--m)" stroke-dasharray="6 5"/>
+  <text x="${L+6}" y="34">Peu bonifié · défense ${top}</text><text x="${w-24}" y="34" text-anchor="end">Très bonifié · défense ${top}</text>
+  <text x="${L+6}" y="${h-Bt-8}">Peu bonifié · défense ${bot}</text><text x="${w-24}" y="${h-Bt-8}" text-anchor="end">Très bonifié · défense ${bot}</text>`;
+  [...R.keys()].sort((a,b)=>(a==sel)-(b==sel)).forEach(i=>{const r=R[i],on=i==sel;g+=`<circle data-i="${i}" cx="${X(r.bo)}" cy="${Y(r[m.key])}" r="${on?9:6}" fill="${on?CFG.adv:CFG.nous}" fill-opacity="${on?1:.8}" stroke="var(--t)" style="cursor:pointer"><title>${esc(r.l)}</title></circle>`});
+  return g+'</svg>'};
+ const info=i=>{const r=R[i],e=document.getElementById(k+'i');if(e)e.textContent=`${r.l} — bonus ${r.bo.toFixed(2)} · score encaissé ${r_(r.sc)} · échec ${r_(r.pf)} % · ${r.n} attaques subies`};
+ const paint=()=>{const el=document.getElementById(k);if(!el)return;el.innerHTML=draw(cur);
+  const l=document.getElementById(k+'l');if(l)[...l.children].forEach(c=>c.classList.toggle('on',+c.dataset.i===sel))};
+ const pick=i=>{sel=i;info(i);paint()};
+ setTimeout(()=>{const bt=document.getElementById(k+'b'),l=document.getElementById(k+'l'),el=document.getElementById(k);if(!bt||!el)return;
+  bt.onclick=e=>{if(e.target.dataset.m!=null){[...bt.children].forEach(c=>c.classList.toggle('on',c==e.target));cur=Q[+e.target.dataset.m];paint()}};
+  l.onclick=e=>{if(e.target.dataset.i!=null)pick(+e.target.dataset.i)};
+  el.onclick=e=>{const i=e.target.dataset?.i;if(i!=null)pick(+i)};
+  el.onmouseover=e=>{const i=e.target.dataset?.i;if(i!=null)info(+i)};
+  bt.children[0].classList.add('on');paint()},0);
+ const ord=[...R.keys()].sort((a,b)=>R[a].l.localeCompare(R[b].l));
+ const rows=[...R].sort((a,b)=>a.sc-b.sc);
+ return`<div class="chips" id="${k}b">${Q.map((m,i)=>`<button class="chip" data-m="${i}">${m.t}</button>`).join('')}</div><div class="chips pl" id="${k}l">${ord.map(i=>`<button class="chip" data-i="${i}">${esc(R[i].l)}</button>`).join('')}</div><div class="sub" id="${k}i">Choisis un joueur dans la liste, ou survole / clique un point : il s'illumine.</div><div class="scroll" id="${k}"></div>
+ <div class="sub">Tirets = médianes ; elles délimitent les 4 cadrans. Probabilité d'échec = attaques non victorieuses / attaques subies (hors IA).</div>
+ <div class="scroll"><table><tr><th>Joueur</th><th>Attaques subies</th><th>Score moyen encaissé (max 1600)</th><th>Probabilité d'échec</th><th>Bonus moyen</th></tr>${rows.map(r=>`<tr><td>${esc(r.l)}</td><td>${r.n}</td><td>${r_(r.sc)}</td><td>${r_(r.pf)} %</td><td>${r.bo.toFixed(2)}</td></tr>`).join('')}</table></div>`}
+function war(id){
+ const w=W(id),d=D.details[id],ps=Object.values(P[id]||{}).sort((a,b)=>a.rang-b.rang),adv=[...(d.adversaires||[])].sort((a,b)=>a.rang-b.rang),c=cls(w);
+ $.innerHTML=`<a href="#/s/${w.saison}">← Saison ${w.saison}</a><h1>${esc(w.guilde_adverse)}</h1>
+ ${c?`<span class="badge ${c}">${c=='V'?'Victoire':'Défaite'}</span>`:''}<div class="sub">${w.start_iso.slice(0,10)} · Bonification MAP : 2 pts ${w.map_2pts.join(', ')} · 1 pt ${w.map_1pts.join(', ')}</div>
+ <h2>${CFG.t.chr}</h2><div class="scroll">${chrono(d.batailles,d.evenements)}</div>
+ <h2>${CFG.t.km}</h2><div class="scroll">${km(d.batailles,ps.length,adv.length||ps.length,w.n_tokens)}</div>
+ <div class="sub">Part des jetons théoriquement réussis : le départ est 100 % ; chaque échec fait descendre la courbe.</div>
+ <h2>${esc(w.guilde)}</h2>${tbl(ps)}<h2>${esc(w.guilde_adverse)}</h2>${tbl(adv)}<h2>Efficacité de la défense</h2>${defense([id])}`;
+}
+function render(){const [,k,a]=location.hash.split('/');window.scrollTo(0,0);
+ try{k=='s'?season(a):k=='w'?war(a):home()}catch(e){$.innerHTML='<pre>'+esc(e.stack)+'</pre>'}}
+addEventListener('hashchange',render);render();
+</script></body></html>
