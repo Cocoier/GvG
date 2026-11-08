@@ -19,7 +19,16 @@ svg text{fill:var(--m);font-size:10px}.pl .chip{padding:3px 10px;font-size:12px}
 .bar{display:flex;height:6px;border-radius:3px;overflow:hidden;margin:10px 0 4px}.bar i{display:block;height:100%}
 .rr{display:grid;grid-template-columns:1fr 70px 1.2fr 70px 1fr;align-items:center;gap:8px;padding:6px 0;border-top:1px solid var(--g)}.rr span{text-align:center;color:var(--m)}
 .rr .b{display:flex;height:6px}.rr .b.l{justify-content:flex-end}.rr .b i{display:block;height:100%;border-radius:3px}.rr b:first-of-type{text-align:right}
-.ic{width:34px;height:34px;border-radius:50%;margin:1px;vertical-align:middle;object-fit:cover}.u{display:inline-block;background:var(--bg);border-radius:10px;padding:1px 7px;margin:1px;font-size:11px}td.l{text-align:left;white-space:normal}#th{position:fixed;top:12px;right:14px;z-index:5}
+.ic{width:34px;height:34px;border-radius:50%;margin:1px;vertical-align:middle;object-fit:cover}.ic.sm{width:28px;height:28px}.ic.big{width:50px;height:50px}.ic.mow{border-radius:8px}.dt th{text-align:center}.dt td{text-align:center}.dt td.l,.dt td:first-child{text-align:left}
+.clk{cursor:pointer}.clk:hover td{filter:brightness(1.12)}.bl{columns:2;margin:0;padding-left:16px;text-align:left;min-width:170px}
+.pill{border-radius:12px;padding:2px 10px;font-size:12px;border:1px solid;white-space:nowrap}.pill.ko{color:var(--ko)}.pill.ok{color:var(--ok)}.pill.nt{color:var(--m)}
+#modal{position:fixed;inset:0;background:#000b;display:flex;align-items:center;justify-content:center;z-index:20}#modal[hidden]{display:none}
+.mb{background:var(--bg);border:1px solid var(--g);border-radius:12px;padding:18px;max-width:min(96vw,760px);max-height:92vh;overflow:auto;position:relative}.x{position:absolute;top:8px;right:8px;padding:2px 10px}
+.mp{position:relative;width:min(80vw,640px);aspect-ratio:1;margin-top:10px}.mp .bg{width:100%;height:100%;object-fit:cover;border-radius:8px}.pu{position:absolute;transform:translate(-50%,-50%)}
+.mg{display:grid;grid-template-columns:repeat(3,1fr);gap:18px;margin-top:16px}.mcard{background:var(--c);border-radius:12px;padding:12px}.dl{display:flex;gap:10px;align-items:center;padding:3px 0;flex-wrap:wrap}.dl .sub{margin-left:auto}
+.mc{background:var(--c);border-radius:10px;padding:8px;cursor:pointer;text-align:center}.mc.on,.ut.on{outline:2px solid var(--a)}.mc img{width:100%;height:90px;object-fit:cover;border-radius:6px}
+.ut{display:inline-flex;flex-direction:column;align-items:center;width:78px;margin:4px;cursor:pointer;border-radius:8px;padding:4px;text-align:center}.ut small{font-size:10px;color:var(--m)}.ut .ic{width:44px;height:44px}
+.nav{display:flex;gap:12px;align-items:center;flex-wrap:wrap}.nav h1{margin-right:10px};background:var(--bg);border-radius:10px;padding:1px 7px;margin:1px;font-size:11px}td.l{text-align:left;white-space:normal}#th{position:fixed;top:12px;right:14px;z-index:5}
 </style></head><body><button id="th" class="chip">☀/☾</button><div id="app"></div>
 <script src="data/bundle.js"></script>
 <script>
@@ -97,7 +106,7 @@ function home(){
  const V={};D.players.filter(p=>p.participe&&keep(p.user_id)).forEach(p=>((V[p.user_id]??={})[p.saison]??=[]).push(p.tot));
  const sv=(id,s)=>V[id]?.[s]?avg(V[id][s]):null;
  const rows=Object.keys(V).map(id=>({id,label:N(id),o:avg(seasons.map(s=>sv(id,s)).filter(v=>v!=null))})).sort((a,b)=>b.o-a.o);
- $.innerHTML=`<h1>${CFG.t.home}</h1>${frise(seasons.map(s=>({href:'#/s/'+s,top:'Saison '+s,bot:bf(s)})))}${onlyBtn()}${methode()}<h2>${CFG.t.perfo}</h2>${tabsHtml}<h2>${CFG.t.perfoSaisons}</h2>`+
+ $.innerHTML=`<div class="nav"><h1>${CFG.t.home}</h1><a class="chip" href="#/prep">Préparation défense de guerre</a><a class="chip" href="#/strat">Stratégie d'attaque</a></div>${frise(seasons.map(s=>({href:'#/s/'+s,top:'Saison '+s,bot:bf(s)})))}${onlyBtn()}${methode()}<h2>${CFG.t.perfo}</h2>${tabsHtml}<h2>${CFG.t.perfoSaisons}</h2>`+
  heat(rows,seasons.map(s=>({label:'Saison '+s,href:'#/s/'+s,get:id=>sv(id,s)}))) +`<h2>${CFG.t.def}</h2><div id="dfh"></div>`;
  bindOnly();const WI=D.wars.map(w=>w.war_id),B=battles(WI);
  setTabs([{l:CFG.t.moy,f:()=>bars(rows.map(r=>({label:r.label,v:r.o})))},{l:CFG.t.sc,f:()=>boxes(B)},{l:CFG.t.fi,f:()=>fiab(B)}]);
@@ -199,20 +208,73 @@ function rapport(w,d,nN,nA){
  ${row('Taux de réussite',a.taux,e.taux,v=>v.toFixed(1).replace('.',',')+' %')}${row('Points par jeton',a.ppt,e.ppt,fmt)}${row('Attaques réussies',a.ok,e.ok,fmt)}${row('Jetons restants',a.rest,e.rest,fmt)}${row('Jetons perdus',a.perdus,e.perdus,fmt)}${row('Abandons',a.aband,e.aband,fmt)}
  ${c?`<div style="text-align:center;margin-top:12px"><span class="badge ${c}">${c=='V'?'Victoire':'Défaite'}</span></div>`:''}</div>`;
 }
-function defWar(w,d,team){ // défenses de la guilde `team` ('nous' ou 'adverse'), attaquées par l'autre équipe
- const att=team=='nous'?'adverse':'nous',by={};
- d.batailles.filter(b=>b.equipe==att&&!b.vs_ia&&b.defenseur_id).forEach(b=>{const o=by[b.defenseur_id+'|'+b.zone]??={j:b.defenseur,z:b.zone,comp:b.def_comp,n:0,s:0,f:0,bf:{}};
-  o.n++;o.s+=b.score_jeu||0;o.f+=b.succes?0:1;(b.buffs||'').split('|').filter(Boolean).forEach(x=>o.bf[x]=(o.bf[x]||0)+1)});
- const R=Object.values(by).filter(o=>o.f>0).map(o=>({...o,sc:o.s/o.n,pf:100*o.f/o.n})).sort((a,b)=>a.sc-b.sc||b.pf-a.pf);
+const NM=id=>D.unites?.[id]||String(id).replace(/_\d+$/,'').replace(/([a-z])([A-Z])/g,'$1 $2');
+const ic=(id,c='ic',col)=>`<img class="${c}" ${col?`style="box-shadow:0 0 0 3px ${col}" `:''}src="img/unites/${esc(id)}.png" title="${esc(NM(id))}" alt="${esc(NM(id))}" onerror="this.outerHTML='<span class=u>'+this.alt+'</span>'">`;
+const team=(comp,mow,c='ic',col)=>(comp||'').split('|').filter(Boolean).map(u=>ic(u,c,col)).join('')+(mow?ic(mow,c+' mow',col):'');
+const code=n=>D.codes?.[n];
+const mapImg=(n,s=46)=>code(n)?`<img src="img/cartes/${code(n)}.png" style="width:${typeof s=='number'?s+'px':s};height:${typeof s=='number'?s+'px':'150px'};object-fit:cover;border-radius:6px" onerror="this.style.display='none'">`:'';
+D.hexMap={};(D.hex||[]).forEach(h=>{const o=D.hexMap[h.Code]??={d:[],a:[]};o[h.Role=='D'?'d':'a'][h.Index-1]=[+h.X,+h.Y]});
+const REG=[],reg=o=>REG.push(o)-1,closeM=()=>{document.getElementById('modal').hidden=true};
+function modal(html){let m=document.getElementById('modal');if(!m){m=document.createElement('div');m.id='modal';m.onclick=e=>{if(e.target==m)closeM()};document.body.appendChild(m)}
+ m.hidden=false;m.innerHTML=`<div class="mb"><button class="chip x" onclick="closeM()">✕</button>${html}</div>`}
+const ISSUE={echec:['Échec','ko'],oneshot:['Victoire','ok'],cleanup:['Coup de grâce','nt']};
+function showRow(i){const {r,w}=REG[i],nm=r.nm||w?.cartes?.[r.z],col=r.agg?null:(r.team=='nous'?CFG.nous:CFG.adv),
+ v=r.A.filter(b=>b.categorie=='oneshot').length,f=r.A.filter(b=>b.categorie=='cleanup').length,e=r.A.length-v-f;
+ modal(`<div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-right:40px"><b style="font-size:18px">${r.agg?'Défense':esc(r.j)}</b>${mapImg(nm,40)}<span>${r.z?`<b>${CFG.bat[r.z]||r.z}</b><br>`:''}<span class="sub">${esc(nm||'')}${code(nm)?' · '+code(nm):''}</span></span>${team(r.comp,r.mow,'ic sm',col)}</div>
+ <div class="sub">${r.A.length} attaques · ${v} victoire${v>1?'s':''} · ${f} coup${f>1?'s':''} de grâce · ${e} échec${e>1?'s':''}</div>
+ <table>${r.A.map((b,j)=>{const [l,c]=ISSUE[b.categorie]||['?','nt'];return`<tr class="clk" onclick="showBattle(${i},${j})">${r.agg?`<td class="sub">${b._w.war_id} · ${esc(b.defenseur)}</td>`:''}<td>${esc(b.joueur)}</td><td>${team(b.att_comp,b.att_mow,'ic sm')}</td><td><span class="pill ${c}">${l}</span></td><td>${fmt(b.score_jeu||0)}</td></tr>`}).join('')}</table>`)}
+function showBattle(i,j){const {r,w}=REG[i],b=r.A[j],W_=b._w||w,nm=r.nm||W_?.cartes?.[b.zone],c=code(nm),h=D.hexMap[c],dt=b.equipe=='nous'?'adverse':'nous',dc=dt=='nous'?CFG.nous:CFG.adv,ac=dt=='nous'?CFG.adv:CFG.nous,[l,cc]=ISSUE[b.categorie]||['?','nt'];
+ const put=(ids,pts,col)=>ids.map((u,k)=>pts?.[k]?`<div class="pu" style="left:${pts[k][0]*100}%;top:${pts[k][1]*100}%">${ic(u,'ic big',col)}</div>`:'').join('');
+ modal(`<a style="cursor:pointer" onclick="showRow(${i})">← attaques</a> <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-right:40px"><b>${esc(b.joueur)}</b> → <b>${esc(b.defenseur)}</b><span class="pill ${cc}">${l}</span><span>${fmt(b.score_jeu||0)}</span></div><div class="sub">${esc(nm||'')} · ${c||''}</div>
+ <div class="mp"><img class="bg" src="img/cartes/${c}.png" onerror="this.style.display='none'">${put(b.def_comp.split('|'),h?.d,dc)}${put(b.att_comp.split('|'),h?.a,ac)}
+ ${b.def_mow?`<div class="pu" style="left:88%;top:10%">${ic(b.def_mow,'ic big mow',dc)}</div>`:''}${b.att_mow?`<div class="pu" style="left:12%;top:90%">${ic(b.att_mow,'ic big mow',ac)}</div>`:''}</div>
+ ${h?'':'<div class="sub">Hexagones non calibrés pour cette carte (voir calibrage.html).</div>'}`)}
+function defWar(w,d,tm){ // défenses de la guilde tm ('nous'|'adverse') : 1 ligne par équipe de défense ayant résisté au moins une fois
+ const att=tm=='nous'?'adverse':'nous',by={},col=tm=='nous'?CFG.nous:CFG.adv;
+ d.batailles.filter(b=>b.equipe==att&&!b.vs_ia&&b.defenseur_id&&b.def_comp).forEach(b=>{
+  const k=[b.defenseur_id,b.zone,b.def_comp,b.def_mow].join('|'),o=by[k]??={j:b.defenseur,z:b.zone,comp:b.def_comp,mow:b.def_mow,team:tm,A:[],bf:{}};
+  o.A.push(b);(b.buffs||'').split('|').filter(Boolean).forEach(x=>o.bf[x]=(o.bf[x]||0)+1)});
+ const R=Object.values(by).map(o=>{const n=o.A.length,f=o.A.filter(b=>!b.succes).length;return{...o,n,f,sc:o.A.reduce((a,b)=>a+(b.score_jeu||0),0)/n,pf:100*f/n}}).filter(o=>o.f>0).sort((a,b)=>a.sc-b.sc||b.pf-a.pf);
  if(!R.length)return'<div class="sub">Aucune défense n\'a résisté.</div>';
- const row=o=>`<tr><td>${esc(o.j)}</td><td class="l"><b>${CFG.bat[o.z]||o.z}</b><br><span class="sub">${esc(w.cartes?.[o.z]||o.z)}</span></td>
-  <td class="l">${(o.comp||'').split('|').filter(Boolean).map(u=>{const n=esc(u.replace(/_\d+$/,'').replace(/([a-z])([A-Z])/g,'$1 $2'));return`<img class="ic" src="img/unites/${esc(u)}.png" title="${n}" alt="${n}" onerror="this.outerHTML='<span class=u>'+this.alt+'</span>'">`}).join('')}</td><td>${o.n}</td>
-  <td style="background:linear-gradient(90deg,${CFG.nous}55 ${o.sc/16}%,transparent 0)">${r_(o.sc)}</td><td>${r_(o.pf)} %</td>
-  <td class="l">${Object.entries(o.bf).map(([k,v])=>`${CFG.buffs[k]||k.replace(/^Env/,'')} ×${+(v/o.n).toFixed(1)}`).join(' · ')}</td></tr>`;
+ const lo=Math.min(...R.map(o=>o.sc)),hi=Math.max(...R.map(o=>o.sc));
+ const row=o=>{const nm=w.cartes?.[o.z],i=reg({r:o,w});return`<tr class="clk" onclick="showRow(${i})"><td>${esc(o.j)}</td><td class="l"><div style="display:flex;gap:8px;align-items:center">${mapImg(nm)}<span><b>${CFG.bat[o.z]||o.z}</b><br><span class="sub">${esc(nm||o.z)}${code(nm)?' · '+code(nm):''}</span></span></div></td>
+  <td class="l">${team(o.comp,o.mow,'ic',col)}</td><td>${o.n}</td><td ${bg(o.sc,lo,hi)}>${r_(o.sc)}</td><td>${r_(o.pf)} %</td>
+  <td class="l"><ul class="bl">${Object.entries(o.bf).map(([k,v])=>`<li>${CFG.buffs[k]||k.replace(/^Env/,'')} ×${+(v/o.n).toFixed(1)}</li>`).join('')}</ul></td></tr>`};
  const head='<tr><th>Joueur</th><th>Zone</th><th>Composition</th><th>Tokens</th><th>Score moy.</th><th>Échec</th><th>Buffs</th></tr>';
- return`<div class="dw scroll"><table>${head}<tbody>${R.slice(0,5).map(row).join('')}</tbody>${R.length>5?`<tbody class="more" hidden>${R.slice(5).map(row).join('')}</tbody>`:''}</table>
- ${R.length>5?`<div style="text-align:center;margin:8px"><button class="chip" onclick="const m=this.closest('.dw').querySelector('tbody.more');m.hidden=!m.hidden;this.textContent=m.hidden?'⌄':'⌃'">⌄</button></div>`:''}</div>`;
-}
+ return`<div class="dw scroll"><table class="dt">${head}<tbody>${R.slice(0,5).map(row).join('')}</tbody>${R.length>5?`<tbody class="more" hidden>${R.slice(5).map(row).join('')}</tbody>`:''}</table>
+ ${R.length>5?`<div style="text-align:center;margin:8px"><button class="chip" onclick="const m=this.closest('.dw').querySelector('tbody.more');m.hidden=!m.hidden;this.textContent=m.hidden?'⌄':'⌃'">⌄</button></div>`:''}</div>`}
+/* ===== Préparation défense de guerre ===== */
+function prep(){
+ const M={};D.wars.forEach(w=>D.details[w.war_id].batailles.forEach(b=>{if(b.vs_ia||!b.def_comp)return;const nm=w.cartes?.[b.zone];if(!nm)return;b._w=w;
+  const u=b.def_comp.split('|').sort(),k=u.join('|')+'+'+(b.def_mow||''),o=(M[nm]??={})[k]??={u,mow:b.def_mow,n:0,f:0,s:0,A:[]};o.n++;o.f+=b.succes?0:1;o.s+=b.score_jeu||0;o.A.push(b)}));
+ const card=nm=>{const L=Object.values(M[nm]||{}).sort((a,b)=>(b.f+1)/(b.n+2)-(a.f+1)/(a.n+2)||b.n-a.n).slice(0,20),
+  li=o=>{const i=reg({r:{agg:true,nm,comp:o.u.join('|'),mow:o.mow,A:o.A}});return`<div class="dl clk" onclick="showRow(${i})">${team(o.u.join('|'),o.mow,'ic sm')}<span><b>${r_(100*o.f/o.n)} %</b> d'échec</span><span class="sub" style="margin-left:auto">moy. ${r_(o.s/o.n)} · ${o.n}×</span></div>`};
+  return`<div class="mcard">${mapImg(nm,'100%')}<div style="margin:6px 0"><b>${esc(nm)}</b> <span class="sub">${code(nm)}</span></div>${L.slice(0,5).map(li).join('')||'<div class="sub">Aucune donnée</div>'}${L.length>5?`<details><summary class="sub">Voir ${L.length-5} autre${L.length>6?'s':''}</summary>${L.slice(5).map(li).join('')}</details>`:''}</div>`};
+ $.innerHTML=`<a href="#/">← ${CFG.t.home}</a><h1>Préparation défense de guerre</h1><div class="sub">Défenses les plus efficaces par carte (taux d'échec des attaques, lissé), sur toutes les guerres : nos défenses et celles des adversaires. Pour chaque défense : % d'échec, score moyen encaissé et « n× » = nombre de fois où elle a été attaquée. Clique sur une défense pour voir les attaques, puis sur une attaque pour voir le déploiement.</div><div class="mg">${Object.keys(D.codes||{}).sort().map(card).join('')}</div>`}
+/* ===== Stratégie d'attaque ===== */
+const ST={map:null,units:[],mow:null,player:null};
+const MOWS=()=>[...new Set(D.wars.flatMap(w=>D.details[w.war_id].batailles.flatMap(b=>[b.att_mow,b.def_mow]).filter(Boolean)))];
+function st1(){document.getElementById('s1').innerHTML=`<div class="mg">${Object.keys(D.codes||{}).sort().map(n=>`<div class="mc${ST.map==n?' on':''}" data-n="${esc(n)}" onclick="stMap(this.dataset.n)">${mapImg(n,'100%')}<div><b>${esc(n)}</b> <span class="sub">${code(n)}</span></div></div>`).join('')}</div>`}
+function st2(){const mw=new Set(MOWS()),all=Object.keys(D.unites||{}).sort((a,b)=>NM(a).localeCompare(NM(b))),tile=(id,on)=>`<div class="ut${on?' on':''}" data-id="${esc(id)}" data-k="${esc(NM(id).toLowerCase())}" onclick="stUnit(this.dataset.id)">${ic(id)}<small>${esc(NM(id))}</small></div>`;
+ document.getElementById('s2').innerHTML=`<div class="sub">Sélection : ${ST.units.length}/5 unités + ${ST.mow?'1':'0'}/1 machine de guerre</div><div style="min-height:44px">${team(ST.units.join('|'),ST.mow,'ic')}</div>
+ <input placeholder="Filtrer…" oninput="stFilter(this.value)" style="margin:8px 0"><h3>Unités</h3><div id="ul">${all.filter(i=>!mw.has(i)).map(i=>tile(i,ST.units.includes(i))).join('')}</div><h3>Machines de guerre</h3><div id="ml">${all.filter(i=>mw.has(i)).map(i=>tile(i,ST.mow==i)).join('')}</div>`}
+const stMap=n=>{ST.map=ST.map==n?null:n;st1()};
+function stUnit(id){const mw=MOWS().includes(id);if(mw)ST.mow=ST.mow==id?null:id;else{const i=ST.units.indexOf(id);if(i>=0)ST.units.splice(i,1);else if(ST.units.length<5)ST.units.push(id)}st2()}
+const stFilter=v=>document.querySelectorAll('#ul .ut,#ml .ut').forEach(t=>t.style.display=t.dataset.k.includes(v.toLowerCase())?'':'none');
+function stGo(){const S=new Set([...ST.units,...(ST.mow?[ST.mow]:[])]),G={};
+ D.wars.forEach(w=>D.details[w.war_id].batailles.forEach(b=>{if(b.vs_ia||!b.def_comp||!b.att_comp||b.categorie=='cleanup')return; // coups de grâce exclus (défense déjà affaiblie)
+  if(ST.player&&!(b.equipe=='nous'&&b.user_id==ST.player))return;
+  const T=new Set([...b.def_comp.split('|'),...(b.def_mow?[b.def_mow]:[])]),miss=[...S].filter(x=>!T.has(x)).sort(),extra=[...T].filter(x=>!S.has(x)).sort(),diff=miss.length;
+  const same=!!ST.map&&w.cartes?.[b.zone]==ST.map,ident=S.size>0&&diff==0;if(!same&&!ident)return;
+  const tier=ident&&same?0:ident?1:1+diff,comp=b.att_comp.split('|').sort().join('|'),k=comp+'+'+(b.att_mow||'')+'#'+tier+'#'+miss+'>'+extra,
+   o=G[k]??={comp,mow:b.att_mow,tier,ident,same,diff,miss,extra:extra.slice(0,miss.length),n:0,ok:0,sc:0};o.n++;o.ok+=b.categorie=='oneshot'?1:0;o.sc+=b.score_jeu||0}));
+ const R=Object.values(G).filter(o=>o.ok>0).sort((a,b)=>a.tier-b.tier||(b.ok+1)/(b.n+2)-(a.ok+1)/(a.n+2)||b.n-a.n).slice(0,40),t=v=>v?'<b style="color:var(--ok)">✔</b>':'<b style="color:var(--ko)">✘</b>',
+  sub=o=>o.ident||!o.miss.length?'':`<div style="white-space:nowrap">${o.miss.map((m,i)=>ic(m,'ic sm')+' → '+(o.extra[i]?ic(o.extra[i],'ic sm'):'?')).join(' · ')}</div>`;
+ document.getElementById('s3').innerHTML=R.length?`<div class="sub">Victoires = oneshots (score ≥ 1100) ; les coups de grâce sont exclus. Substitution = unité sélectionnée → unité réellement vue en défense.</div><div class="scroll"><table class="dt"><tr><th>Attaque</th><th>% succès</th><th>Score moyen</th><th>Apparitions</th><th>Défense identique</th><th>Carte identique</th></tr>${R.map(o=>`<tr><td class="l">${team(o.comp,o.mow,'ic')}</td><td>${r_(100*o.ok/o.n)} %</td><td>${r_(o.sc/o.n)}</td><td>${o.n}</td><td>${t(o.ident)}${sub(o)}</td><td>${t(o.same)}</td></tr>`).join('')}</table></div>`:'<div class="sub">Aucune attaque victorieuse connue : choisis une carte et/ou une défense.</div>'}
+function strat(){const ids=[...new Set(D.players.filter(p=>p.participe).map(p=>p.user_id))].sort((a,b)=>N(a).localeCompare(N(b)));
+ $.innerHTML=`<a href="#/">← ${CFG.t.home}</a><h1>Stratégie d'attaque</h1><h2>1. Sélection de la carte</h2><div id="s1"></div><h2>2. Sélection de la défense</h2><div id="s2"></div>
+ <h2>Choix du joueur <span class="sub">(optionnel)</span></h2><select onchange="ST.player=this.value||null"><option value="">Tous les joueurs</option>${ids.map(id=>`<option value="${esc(id)}"${ST.player==id?' selected':''}>${esc(N(id))}</option>`).join('')}</select><div class="sub">Restreint l'analyse aux attaques de ce joueur.</div>
+ <h2>3. Attaques fiables</h2><button class="chip" onclick="stGo()">Lancer la recherche</button><div id="s3" style="margin-top:12px"></div>`;st1();st2()}
 function war(id){
  const w=W(id),d=D.details[id],ps=Object.values(P[id]||{}).sort((a,b)=>a.rang-b.rang),adv=[...(d.adversaires||[])].sort((a,b)=>a.rang-b.rang);
  $.innerHTML=`<a href="#/s/${w.saison}">← Saison ${w.saison}</a><h1>${esc(w.guilde_adverse)}</h1>
@@ -226,6 +288,6 @@ function war(id){
  <h2>Efficacité de la défense</h2>${defense([id])}`;
 }
 function render(){const [,k,a]=location.hash.split('/');window.scrollTo(0,0);
- try{k=='s'?season(a):k=='w'?war(a):home()}catch(e){$.innerHTML='<pre>'+esc(e.stack)+'</pre>'}}
+ try{k=='s'?season(a):k=='w'?war(a):k=='prep'?prep():k=='strat'?strat():home()}catch(e){$.innerHTML='<pre>'+esc(e.stack)+'</pre>'}}
 addEventListener('hashchange',render);render();
 </script></body></html>
