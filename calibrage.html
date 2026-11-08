@@ -1,0 +1,24 @@
+<!doctype html><html lang="fr"><head><meta charset="utf-8"><title>Calibrage des hexagones</title>
+<style>body{font:14px system-ui;background:#14161c;color:#e7e9ee;margin:16px}button,select{font:inherit;padding:6px 12px;margin-right:6px}#w{position:relative;display:inline-block;cursor:crosshair;margin-top:10px}
+#im{width:min(92vw,720px);display:block}.d{position:absolute;transform:translate(-50%,-50%);width:26px;height:26px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:12px;pointer-events:none;color:#fff}
+textarea{width:100%;height:120px;margin-top:10px}</style></head><body>
+<h2>Calibrage des hexagones</h2>
+<p>Pour chaque carte, clique dans l'ordre : <b>5 hexagones numérotés des défenseurs (1 → 5)</b>, puis <b>5 hexagones grisés des attaquants</b> (ordre de placement des unités : du haut gauche au bas droite). Le travail est mémorisé dans le navigateur. À la fin : « Copier le CSV » et enregistre-le dans <code>Champs_bataille/hexagones.csv</code>.</p>
+<select id="m"></select><button onclick="undo()">Annuler le dernier point</button><button onclick="reset()">Effacer cette carte</button><button onclick="out()">Copier le CSV</button><span id="info"></span>
+<div id="w"><img id="im"><div id="pts"></div></div><textarea id="o" placeholder="Le CSV apparaît ici"></textarea>
+<script src="data/bundle.js"></script><script>
+const D=window.GDG,codes=[...new Set(Object.values(D.codes||{}))].sort();let P={};
+try{P=JSON.parse(localStorage.getItem('hexcal')||'{}')}catch(e){}
+if(!Object.keys(P).length)(D.hex||[]).forEach(h=>{(P[h.Code]??=Array(10).fill(null))[(h.Role=='D'?0:5)+h.Index-1]=[+h.X,+h.Y]});
+const save=()=>{try{localStorage.setItem('hexcal',JSON.stringify(P))}catch(e){}},cur=()=>P[m.value]??=[];
+const m=document.getElementById('m'),im=document.getElementById('im');
+m.innerHTML=codes.map(c=>`<option>${c}</option>`).join('');m.onchange=draw;
+function draw(){im.src='img/cartes/'+m.value+'.png';const a=cur().filter(Boolean);
+ document.getElementById('pts').innerHTML=a.map((p,i)=>`<div class="d" style="left:${p[0]*100}%;top:${p[1]*100}%;background:${i<5?'#9e0e40':'#d79a10'}">${i<5?'D'+(i+1):'A'+(i-4)}</div>`).join('');
+ document.getElementById('info').textContent=a.length>=10?' ✔ carte terminée':' Prochain clic : '+(a.length<5?'défenseur '+(a.length+1):'attaquant '+(a.length-4))}
+document.getElementById('w').onclick=e=>{const a=cur().filter(Boolean);if(a.length>=10)return;const r=im.getBoundingClientRect();a.push([+((e.clientX-r.left)/r.width).toFixed(4),+((e.clientY-r.top)/r.height).toFixed(4)]);P[m.value]=a;save();draw()};
+const undo=()=>{P[m.value]=cur().filter(Boolean).slice(0,-1);save();draw()},reset=()=>{P[m.value]=[];save();draw()};
+function out(){const L=['Code,Role,Index,X,Y'];codes.forEach(c=>{const a=(P[c]||[]).filter(Boolean);if(a.length==10)a.forEach((p,i)=>L.push([c,i<5?'D':'A',i<5?i+1:i-4,p[0],p[1]].join(',')))});
+ o.value=L.join('\n');o.select();try{navigator.clipboard.writeText(o.value)}catch(e){}}
+draw();
+</script></body></html>
